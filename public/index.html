@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Flyer & Ad Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #08080f;
+    --surface: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.07);
+    --orange: #f97316;
+    --orange-dim: rgba(249,115,22,0.12);
+    --orange-border: rgba(249,115,22,0.3);
+    --text: #fff;
+    --muted: rgba(255,255,255,0.45);
+    --subtle: rgba(255,255,255,0.08);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(249,115,22,0.03) 1px, transparent 0);
+    background-size: 36px 36px;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed; top: -200px; right: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(249,115,22,0.055) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 48px 20px 100px; position: relative; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 52px; }
+  .badge {
+    display: inline-block;
+    background: var(--orange-dim);
+    border: 1px solid var(--orange-border);
+    color: var(--orange);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    margin-bottom: 22px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(40px, 9vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+  h1 span {
+    background: linear-gradient(135deg, #f97316, #fb923c, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { color: var(--muted); font-size: 15px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(12px);
+  }
+  .card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    color: var(--orange);
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+
+  /* Form Grid */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.3px; }
+  label span { color: var(--orange); }
+  input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px 15px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+  input::placeholder { color: rgba(255,255,255,0.2); }
+  .hint { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 2px; }
+
+  /* Error */
+  .error-box {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: #fca5a5;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* Generate Button */
+  .btn-generate {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 28px rgba(249,115,22,0.28);
+    margin-bottom: 32px;
+  }
+  .btn-generate:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(249,115,22,0.38); }
+  .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* Progress */
+  .progress-card { display: none; }
+  .progress-card.show { display: block; }
+  .steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    row-gap: 14px;
+    margin-bottom: 22px;
+  }
+  .step-wrap { display: flex; align-items: center; }
+  .step-circle {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    transition: all 0.35s;
+    flex-shrink: 0;
+  }
+  .step-circle.active { background: linear-gradient(135deg,#f97316,#ea580c); border-color: #f97316; transform: scale(1.1); }
+  .step-circle.done { background: rgba(249,115,22,0.2); border-color: #f97316; }
+  .step-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.35);
+    margin: 0 8px;
+    transition: color 0.3s;
+    white-space: nowrap;
+  }
+  .step-lbl.active, .step-lbl.done { color: var(--orange); }
+  .step-connector {
+    width: 20px; height: 2px;
+    background: rgba(255,255,255,0.08);
+    transition: background 0.3s;
+  }
+  .step-connector.done { background: linear-gradient(90deg,#f97316,#ea580c); }
+  .progress-status {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .spinner {
+    width: 17px; height: 17px;
+    border: 2px solid rgba(249,115,22,0.2);
+    border-top-color: #f97316;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  #results { display: none; }
+  #results.show { display: block; }
+  .results-title { font-family: 'Playfair Display', serif; font-size: 26px; text-align: center; margin-bottom: 28px; }
+
+  /* Flyer */
+  .flyer-wrap {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 260px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  #flyer-img { width: 100%; height: auto; display: none; }
+  .flyer-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px; }
+  .flyer-loading p { color: var(--muted); font-size: 13px; }
+  .btn-open {
+    display: block; text-align: center;
+    padding: 11px;
+    background: var(--orange-dim);
+    border: 1px solid var(--orange-border);
+    border-radius: 8px;
+    color: var(--orange);
+    text-decoration: none;
+    font-size: 13px; font-weight: 600;
+    transition: background 0.2s;
+    margin-bottom: 8px;
+  }
+  .btn-open:hover { background: rgba(249,115,22,0.2); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--orange-dim);
+    border-color: var(--orange-border);
+    color: var(--orange);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Headline Banner */
+  .headline-banner {
+    background: linear-gradient(135deg, rgba(249,115,22,0.1), rgba(234,88,12,0.04));
+    border: 1px solid rgba(249,115,22,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .headline-text { font-family: 'Playfair Display', serif; font-size: clamp(18px,4vw,28px); font-weight: 700; margin-bottom: 8px; }
+  .subheadline-text { font-size: 13px; color: var(--muted); }
+
+  /* Copy blocks */
+  .copy-block {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .copy-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .copy-block-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--orange); text-transform: uppercase; }
+  .copy-btn {
+    padding: 4px 12px;
+    background: var(--orange-dim);
+    border: 1px solid var(--orange-border);
+    border-radius: 6px;
+    color: var(--orange);
+    font-size: 10px; font-family: 'DM Mono', monospace;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .copy-btn:hover { background: rgba(249,115,22,0.22); }
+  .copy-text { font-size: 13px; color: rgba(255,255,255,0.72); line-height: 1.65; white-space: pre-wrap; }
+
+  /* Divider */
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 20px 0; }
+
+  /* Research grid */
+  .research-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: 14px; margin-bottom: 20px; }
+  .r-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 16px; }
+  .r-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--orange); text-transform: uppercase; margin-bottom: 8px; }
+  .r-text { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6; }
+  .list-section { margin-bottom: 16px; }
+  .list-item { font-size: 13px; color: rgba(255,255,255,0.65); padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); line-height: 1.5; }
+  .list-item:last-child { border-bottom: none; }
+
+  /* Regen */
+  .btn-regen {
+    width: 100%;
+    padding: 16px;
+    background: var(--orange-dim);
+    border: 1px solid var(--orange-border);
+    border-radius: 12px;
+    color: var(--orange);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s;
+    margin-top: 8px;
+  }
+  .btn-regen:hover { background: rgba(249,115,22,0.22); }
+
+  footer { text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,0.18); margin-top: 48px; }
+
+  @media (max-width: 520px) {
+    .step-lbl { display: none; }
+    .step-connector { width: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="badge">✦ AI Powered — Free</div>
+    <h1>Flyer &amp; Ad<br><span>Generator</span></h1>
+    <p class="subtitle">Business info → Professional flyer + ad copy in seconds</p>
+  </header>
+
+  <!-- Form -->
+  <div class="card">
+    <div class="card-label">📋 Business Information</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Business Name <span>*</span></label>
+        <input id="businessName" placeholder="e.g. Mama Cee's Kitchen" />
+      </div>
+      <div class="field">
+        <label>Business Type <span>*</span></label>
+        <input id="businessType" placeholder="e.g. Restaurant, Salon, Pharmacy" />
+      </div>
+      <div class="field">
+        <label>Product / Service <span>*</span></label>
+        <input id="productService" placeholder="e.g. Jollof Rice & Catering Services" />
+      </div>
+      <div class="field">
+        <label>Target City / Country <span>*</span></label>
+        <input id="targetCity" placeholder="e.g. Lagos, Nigeria" />
+      </div>
+      <div class="field">
+        <label>Special Offer <span style="color:var(--muted)">(optional)</span></label>
+        <input id="specialOffer" placeholder="e.g. 20% off first order, Free delivery" />
+      </div>
+      <div class="field">
+        <label>Contact Information <span>*</span></label>
+        <input id="contact" placeholder="e.g. 0801-234-5678 | @handle" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Progress -->
+  <div class="card progress-card" id="progress-card">
+    <div class="steps" id="steps-row">
+      <div class="step-wrap">
+        <div class="step-circle" id="sc-1">🔍</div>
+        <span class="step-lbl" id="sl-1">Research</span>
+        <div class="step-connector" id="cn-1"></div>
+      </div>
+      <div class="step-wrap">
+        <div class="step-circle" id="sc-2">✍️</div>
+        <span class="step-lbl" id="sl-2">Copywriting</span>
+        <div class="step-connector" id="cn-2"></div>
+      </div>
+      <div class="step-wrap">
+        <div class="step-circle" id="sc-3">🎨</div>
+        <span class="step-lbl" id="sl-3">Design Prompt</span>
+        <div class="step-connector" id="cn-3"></div>
+      </div>
+      <div class="step-wrap">
+        <div class="step-circle" id="sc-4">🖼️</div>
+        <span class="step-lbl" id="sl-4">Flyer</span>
+      </div>
+    </div>
+    <div class="progress-status">
+      <div class="spinner"></div>
+      <span id="progress-label">Starting...</span>
+    </div>
+  </div>
+
+  <!-- Button -->
+  <button class="btn-generate" id="btn-gen" onclick="generate()">
+    ⚡ Generate Advertisement
+  </button>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="results-title">🎉 Your Ad is Ready</div>
+
+    <!-- Flyer -->
+    <div class="card">
+      <div class="card-label">🖼️ Generated Flyer</div>
+      <div class="flyer-wrap" id="flyer-wrap">
+        <div class="flyer-loading" id="flyer-loading">
+          <div class="spinner"></div>
+          <p>Rendering your flyer...</p>
+        </div>
+        <img id="flyer-img" alt="Generated advertising flyer" />
+      </div>
+      <a id="flyer-link" class="btn-open" href="#">⬇ Download Flyer</a>
+      <p class="hint" id="design-style" style="text-align:center"></p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('copy',this)">✍️ Ad Copy</button>
+      <button class="tab-btn" onclick="switchTab('research',this)">🔍 Market Research</button>
+    </div>
+
+    <!-- Copy Panel -->
+    <div class="card tab-panel active" id="tab-copy">
+      <div class="headline-banner">
+        <div class="headline-text" id="out-headline"></div>
+        <div class="subheadline-text" id="out-subheadline"></div>
+      </div>
+      <div class="copy-block">
+        <div class="copy-block-header">
+          <span class="copy-block-label">📝 Body Copy</span>
+          <button class="copy-btn" onclick="copyText('out-body')">Copy</button>
+        </div>
+        <p class="copy-text" id="out-body"></p>
+      </div>
+      <div class="copy-block">
+        <div class="copy-block-header">
+          <span class="copy-block-label">🎯 Call to Action</span>
+          <button class="copy-btn" onclick="copyText('out-cta')">Copy</button>
+        </div>
+        <p class="copy-text" id="out-cta"></p>
+      </div>
+      <div class="copy-block">
+        <div class="copy-block-header">
+          <span class="copy-block-label">💬 Tagline</span>
+          <button class="copy-btn" onclick="copyText('out-tagline')">Copy</button>
+        </div>
+        <p class="copy-text" id="out-tagline"></p>
+      </div>
+      <div class="divider"></div>
+      <div class="copy-block">
+        <div class="copy-block-header">
+          <span class="copy-block-label">👥 Facebook Caption</span>
+          <button class="copy-btn" onclick="copyText('out-fb')">Copy</button>
+        </div>
+        <p class="copy-text" id="out-fb"></p>
+      </div>
+      <div class="copy-block">
+        <div class="copy-block-header">
+          <span class="copy-block-label">📱 WhatsApp Caption</span>
+          <button class="copy-btn" onclick="copyText('out-wa')">Copy</button>
+        </div>
+        <p class="copy-text" id="out-wa"></p>
+      </div>
+    </div>
+
+    <!-- Research Panel -->
+    <div class="card tab-panel" id="tab-research">
+      <div class="research-grid">
+        <div class="r-item"><div class="r-title">🎯 Target Audience</div><p class="r-text" id="r-audience"></p></div>
+        <div class="r-item"><div class="r-title">💡 Ad Style</div><p class="r-text" id="r-style"></p></div>
+        <div class="r-item"><div class="r-title">🏆 Competitive Edge</div><p class="r-text" id="r-edge"></p></div>
+        <div class="r-item"><div class="r-title">🎨 Color Psychology</div><p class="r-text" id="r-color"></p></div>
+      </div>
+      <div class="list-section">
+        <div class="r-title">😣 Customer Pain Points</div>
+        <div id="r-pain"></div>
+      </div>
+      <div class="list-section">
+        <div class="r-title">✨ Customer Desires</div>
+        <div id="r-desires"></div>
+      </div>
+      <div class="list-section">
+        <div class="r-title">📐 Marketing Angles</div>
+        <div id="r-angles"></div>
+      </div>
+    </div>
+
+    <button class="btn-regen" onclick="generate()">🔄 Regenerate</button>
+  </div>
+
+  <footer>Built with Gemini AI &amp; Pollinations.ai — Fully Free</footer>
+</div>
+
+<script>
+  // ─── Progress helpers ─────────────────────────────────────
+  function setStep(n, label) {
+    document.getElementById('progress-label').textContent = label;
+    for (let i = 1; i <= 4; i++) {
+      const sc = document.getElementById(`sc-${i}`);
+      const sl = document.getElementById(`sl-${i}`);
+      if (i < n)       { sc.className = 'step-circle done'; sl.className = 'step-lbl done'; }
+      else if (i === n) { sc.className = 'step-circle active'; sl.className = 'step-lbl active'; }
+      else             { sc.className = 'step-circle'; sl.className = 'step-lbl'; }
+      if (i < 4) {
+        document.getElementById(`cn-${i}`).className = i < n ? 'step-connector done' : 'step-connector';
+      }
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-box');
+    el.textContent = '⚠️ ' + msg;
+    el.classList.add('show');
+  }
+  function hideError() { document.getElementById('error-box').classList.remove('show'); }
+
+  // ─── Tab switcher ────────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${name}`).classList.add('active');
+  }
+
+  // ─── Copy to clipboard ───────────────────────────────────
+  function copyText(id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      event.target.textContent = '✓ Copied';
+      setTimeout(() => event.target.textContent = 'Copy', 2000);
+    });
+  }
+
+  // ─── Populate results ────────────────────────────────────
+  function populateResults(data) {
+    const { research, copy, design, flyerBase64 } = data;
+
+    // Flyer
+    const img = document.getElementById('flyer-img');
+    document.getElementById('flyer-loading').style.display = 'flex';
+    img.style.display = 'none';
+    img.onload = () => { document.getElementById('flyer-loading').style.display = 'none'; img.style.display = 'block'; };
+    img.onerror = () => { document.getElementById('flyer-loading').style.display = 'none'; img.style.display = 'block'; };
+    img.src = flyerBase64;
+    // Download link for base64 image
+    const dlLink = document.getElementById('flyer-link');
+    dlLink.href = flyerBase64;
+    dlLink.download = 'flyer-' + Date.now() + '.png';
+    dlLink.textContent = '⬇ Download Flyer';
+    document.getElementById('design-style').textContent = `Design style: ${design.style}`;
+
+    // Copy
+    document.getElementById('out-headline').textContent = copy.headline;
+    document.getElementById('out-subheadline').textContent = copy.subheadline;
+    document.getElementById('out-body').textContent = copy.bodyText;
+    document.getElementById('out-cta').textContent = copy.callToAction;
+    document.getElementById('out-tagline').textContent = copy.tagline;
+    document.getElementById('out-fb').textContent = copy.facebookCaption;
+    document.getElementById('out-wa').textContent = copy.whatsappCaption;
+
+    // Research
+    document.getElementById('r-audience').textContent = research.targetAudience;
+    document.getElementById('r-style').textContent = research.advertisingStyle;
+    document.getElementById('r-edge').textContent = research.competitiveEdge;
+    document.getElementById('r-color').textContent = research.colorPsychology;
+
+    ['pain','desires','angles'].forEach(k => {
+      const arr = k === 'pain' ? research.painPoints : k === 'desires' ? research.desires : research.marketingAngles;
+      document.getElementById(`r-${k}`).innerHTML = arr.map(x => `<div class="list-item">→ ${x}</div>`).join('');
+    });
+  }
+
+  // ─── Main generate function ──────────────────────────────
+  async function generate() {
+    hideError();
+
+    const fields = ['businessName','businessType','productService','targetCity','contact'];
+    const info = {};
+    for (const f of fields) {
+      const val = document.getElementById(f).value.trim();
+      if (!val) { showError(`Please fill in: ${f.replace(/([A-Z])/g,' $1').toLowerCase()}`); return; }
+      info[f] = val;
+    }
+    info.specialOffer = document.getElementById('specialOffer').value.trim();
+
+    // UI: loading state
+    const btn = document.getElementById('btn-gen');
+    btn.disabled = true;
+    btn.textContent = '⚡ Generating...';
+    document.getElementById('progress-card').classList.add('show');
+    document.getElementById('results').classList.remove('show');
+    setStep(1, 'Analyzing your market...');
+
+    try {
+      // We stream progress by polling via SSE or just calling the API and updating between steps.
+      // Since we're using a single /api/generate call, we fake step progress with a timer trick.
+      const stepLabels = [
+        [1, 'Analyzing your market...'],
+        [2, 'Writing your ad copy...'],
+        [3, 'Building design prompt...'],
+        [4, 'Generating your flyer...'],
+      ];
+      let stepIdx = 0;
+      const stepTimer = setInterval(() => {
+        stepIdx++;
+        if (stepIdx < stepLabels.length) setStep(...stepLabels[stepIdx]);
+      }, 4000); // roughly 4s per AI step
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(info),
+      });
+
+      clearInterval(stepTimer);
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+
+      const data = await res.json();
+      setStep(4, 'Done!');
+      populateResults(data);
+      document.getElementById('results').classList.add('show');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ Generate Advertisement';
+      document.getElementById('progress-card').classList.remove('show');
+    }
+  }
+</script>
+</body>
+</html>
