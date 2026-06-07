@@ -28,9 +28,9 @@ let fontsCache = null;
 async function getFonts() {
   if (fontsCache) return fontsCache;
   const [montserratBold, montserratBlack, oswaldBold] = await Promise.all([
-    downloadFont("https://fonts.gstatic.com/s/montserrat/v29/JTUSjIg1_i6t8kCHKm459WlhyyTh89Y.woff"),
-    downloadFont("https://fonts.gstatic.com/s/montserrat/v29/JTUSjIg1_i6t8kCHKm459WdhyyTh89Y.woff"),
-    downloadFont("https://fonts.gstatic.com/s/oswald/v49/TK3_WkUHHAIjg75cFRf3bXL8LICs169vsUZiYA.woff"),
+    downloadFont("https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf"),
+    downloadFont("https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCvC70w-.ttf"),
+    downloadFont("https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1xZogUE.ttf"),
   ]);
   fontsCache = [
     { name: "Montserrat", data: montserratBold,  weight: 700, style: "normal" },
