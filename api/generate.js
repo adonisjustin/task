@@ -3,14 +3,12 @@ const chromium = require("@sparticuz/chromium");
 const puppeteer = require("puppeteer-core");
 const { getTemplate } = require("./flyer-templates");
 
-// ─── CONFIG ───────────────────────────────────────────────────
 const CONFIG = {
   groqApiKey:   process.env.GROQ_API_KEY || "",
   groqModel:    "llama-3.3-70b-versatile",
   groqEndpoint: "https://api.groq.com/openai/v1/chat/completions",
 };
 
-// ─── HELPER: Call Groq ────────────────────────────────────────
 async function callGroq(system, user) {
   const res = await fetch(CONFIG.groqEndpoint, {
     method: "POST",
@@ -37,7 +35,6 @@ async function callGroq(system, user) {
     .replace(/```json\n?|\n?```/g, "").trim();
 }
 
-// ─── STEP 1: Market Research ──────────────────────────────────
 async function runMarketResearch(info) {
   const raw = await callGroq(
     "You are an expert market research analyst. Return only valid raw JSON, no markdown.",
@@ -56,7 +53,6 @@ Business: ${info.businessName} | ${info.businessType} | ${info.productService} |
   return JSON.parse(raw);
 }
 
-// ─── STEP 2: Copywriting ──────────────────────────────────────
 async function runCopywriting(info, research) {
   const raw = await callGroq(
     "You are an expert advertising copywriter. Return only valid raw JSON, no markdown.",
@@ -77,18 +73,18 @@ Angle: ${research.marketingAngles[0]} | Style: ${research.advertisingStyle} | Ed
   return JSON.parse(raw);
 }
 
-// ─── STEP 3: Design Decisions ─────────────────────────────────
 async function runDesign(info, research) {
   const raw = await callGroq(
     "You are a professional print designer. Return only valid raw JSON, no markdown.",
     `Pick design settings for a printed advertising flyer. Return ONLY this JSON:
 {
   "template": "one of: classic | bold | elegant | street",
-  "primaryColor": "#hex — main background",
-  "secondaryColor": "#hex — header/footer background",
-  "accentColor": "#hex — buttons and highlights",
-  "textColor": "#hex — main text color",
-  "lightColor": "#hex — subtle tint for panels"
+  "style": "3 word design description e.g. Bold Vibrant Energy",
+  "primaryColor": "#hex for main background",
+  "secondaryColor": "#hex for header and footer background",
+  "accentColor": "#hex for buttons and highlights",
+  "textColor": "#hex for main text color",
+  "lightColor": "#hex for subtle panel tint"
 }
 Business type: ${info.businessType}
 Advertising style: ${research.advertisingStyle}
@@ -97,7 +93,6 @@ Color psychology: ${research.colorPsychology}`
   return JSON.parse(raw);
 }
 
-// ─── STEP 4: Render Flyer via Puppeteer ───────────────────────
 async function renderFlyer(info, copy, design) {
   const colors = {
     primary:   design.primaryColor,
@@ -120,17 +115,19 @@ async function renderFlyer(info, copy, design) {
 <body>${body}</body>
 </html>`;
 
+  const executablePath = await chromium.executablePath();
+
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: { width: 900, height: 1200, deviceScaleFactor: 2 },
-    executablePath: await chromium.executablePath(),
+    executablePath,
     headless: chromium.headless,
   });
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
-    await new Promise(r => setTimeout(r, 2000));
+    await page.setContent(html, { waitUntil: "networkidle0", timeout: 25000 });
+    await new Promise(r => setTimeout(r, 1500));
     const png = await page.screenshot({ type: "png", encoding: "base64", fullPage: false });
     return `data:image/png;base64,${png}`;
   } finally {
@@ -138,9 +135,7 @@ async function renderFlyer(info, copy, design) {
   }
 }
 
-// ─── VERCEL HANDLER ───────────────────────────────────────────
 module.exports = async (req, res) => {
-  // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
