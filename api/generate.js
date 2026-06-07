@@ -115,13 +115,24 @@ async function renderFlyer(info, copy, design) {
 <body>${body}</body>
 </html>`;
 
-  const executablePath = await chromium.executablePath();
+  // ── Key fix: set CHROMIUM_FLAGS and use correct executablePath for Lambda ──
+  chromium.setGraphicsMode = false;
 
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: { width: 900, height: 1200, deviceScaleFactor: 2 },
-    executablePath,
-    headless: chromium.headless,
+    args: [
+      ...chromium.args,
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--single-process",
+      "--no-zygote",
+    ],
+    defaultViewport: { width: 900, height: 1200, deviceScaleFactor: 1 },
+    executablePath: await chromium.executablePath(
+      // Explicit path for Vercel Lambda environment
+      process.env.AWS_EXECUTION_ENV ? "/tmp/chromium" : undefined
+    ),
+    headless: true,
   });
 
   try {
