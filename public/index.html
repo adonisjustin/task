@@ -502,14 +502,14 @@
 <script>
 
   // ─── Pre-fill form for testing ────────────────────────────
-window.onload = () => {
-  document.getElementById('businessName').value    = "Mama Cee's Kitchen";
-  document.getElementById('businessType').value    = "Restaurant";
-  document.getElementById('productService').value  = "Jollof Rice, Fried Chicken & Catering Services";
-  document.getElementById('targetCity').value      = "Lagos, Nigeria";
-  document.getElementById('specialOffer').value    = "Buy 2 plates, get 1 FREE today only!";
-  document.getElementById('contact').value         = "0801-234-5678 | @mamaceeskitchen";
-};
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('businessName').value   = "Mama Cee's Kitchen";
+  document.getElementById('businessType').value   = "Restaurant";
+  document.getElementById('productService').value = "Jollof Rice, Fried Chicken & Catering Services";
+  document.getElementById('targetCity').value     = "Lagos, Nigeria";
+  document.getElementById('specialOffer').value   = "Buy 2 plates, get 1 FREE today only!";
+  document.getElementById('contact').value        = "0801-234-5678 | @mamaceeskitchen";
+});
   // ─── Progress helpers ─────────────────────────────────────
   function setStep(n, label) {
     document.getElementById('progress-label').textContent = label;
